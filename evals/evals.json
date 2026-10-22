@@ -21,6 +21,20 @@
       "prompt": "Crea un pacchetto ROS 2 Python `serial_driver` con un lifecycle node `serial_driver_node` che simula un driver seriale: in configure apre la 'porta' (simulata), in activate pubblica sensor_msgs/Temperature su temperature a 10 Hz, in deactivate smette. Aggiungi un launch file `driver.launch.py` che lo avvia nel namespace robot_1 e lo porta automaticamente in active.",
       "expected_output": "rclpy lifecycle node; launch reaches ACTIVE automatically; node resolves to /robot_1/serial_driver_node (namespace not doubled); publishes only while active.",
       "files": []
+    },
+    {
+      "id": 4,
+      "name": "fleet_params",
+      "prompt": "Crea un pacchetto ROS 2 Python `fleet_params` con un nodo `fleet_node` (eseguibile `fleet_node`) che dichiara i parametri `speed_limit` (double) e `frame_id` (string) e li stampa all'avvio. Aggiungi un file di parametri YAML condiviso: `speed_limit: 1.5` e `frame_id: map` per tutti i nodi, ma `speed_limit: 2.5` solo per il nodo `/robot_2/fleet_node`. Il launch file `fleet.launch.py` deve avviare due istanze, una nel namespace `robot_1` e una in `robot_2`, entrambe con quel file.",
+      "expected_output": "/robot_1/fleet_node speed_limit == 1.5 and /robot_2/fleet_node speed_limit == 2.5 (the wildcard entry must come first in the YAML: the later entry wins).",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "arm_driver",
+      "prompt": "Crea un pacchetto ROS 2 Python `arm_driver` con un lifecycle node `arm_driver_node` (eseguibile `arm_driver_node`) che pubblica std_msgs/Float64 su `joint_state` a 10 Hz solo quando e' attivo. Il launch file `arm.launch.py` lo avvia nel namespace `robot_1` e lo porta automaticamente in active all'avvio. Requisito: se un operatore lo disattiva a mano con `ros2 lifecycle set /robot_1/arm_driver_node deactivate`, deve restare inactive.",
+      "expected_output": "Reaches active after launch; after a manual deactivate it stays inactive (the auto-activate handler must fire only after configure, start_state='configuring').",
+      "files": []
     }
   ]
 }
