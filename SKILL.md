@@ -30,6 +30,15 @@ Target: **ROS 2 Humble, Python 3.10** (`/opt/ros/humble`). Verify an rclpy API a
 - `__init__` order: parameters, QoS profiles, communication handles and timers last.
 - Declare and read in one line: `self._rate: float = self.declare_parameter("rate_hz", 10.0).value`. Do not redeclare `use_sim_time`; every node already has it.
 - Parameter validation: use `ParameterDescriptor(floating_point_range=[FloatingPointRange(from_value=..., to_value=...)])` or `read_only=True` instead of hand-written checks. An `add_on_set_parameters_callback` then only applies the new value.
+- Parameter files: one YAML per package in `config/`, shared values under `/**`, per-node values under the fully qualified name. **The later entry wins, not the more specific one** (verified on Humble), so always put `/**` first:
+  ```yaml
+  /**:
+    ros__parameters:
+      publish_rate_hz: 20.0
+  /robot_0/managed_controller_node:
+    ros__parameters:
+      publish_rate_hz: 40.0
+  ```
 - Shutdown: catch `KeyboardInterrupt` and `ExternalShutdownException`; in `finally` call `executor.shutdown()`, `node.destroy_node()`, `rclpy.try_shutdown()`. Override `destroy_node()` to close files/bags you own.
 - State lives on the instance, never in module globals.
 - Time: use `self.get_clock().now()`, never `time.time()`, so `use_sim_time` works.
@@ -59,6 +68,8 @@ Never trust default QoS without checking. Full matrix and presets: `./references
 - Move heavy compute (inference, point clouds) to a worker thread fed by `queue.Queue(maxsize=1)`.
 - A controller must fail safe: command zero when its input goes stale (see `templates/reference_node.py`) and when it is disabled.
 
+- **Python performance**: never loop over points or pixels in Python. Convert once with `sensor_msgs_py.point_cloud2.read_points_numpy(cloud, field_names=["x", "y", "z"], skip_nans=True)` or `cv_bridge`, then use vectorised numpy. The GIL means a `MultiThreadedExecutor` does not parallelise CPU work: move it to a `concurrent.futures.ProcessPoolExecutor`, or to C++ when it must run at sensor rate.
+
 ### 5.2 Services
 Short, non-blocking configuration requests only. Anything long is an action.
 
@@ -76,12 +87,12 @@ Use for hardware drivers, estimators and safety-critical controllers. Template: 
 - `on_deactivate`: stop timers; neutralise commands.
 - `on_cleanup`: destroy everything from `on_configure`. Delegate `on_shutdown` and `on_error` to it so a later `configure` never duplicates resources.
 - Publish only when `pub.is_activated`.
-- A lifecycle node started by a launch file stays UNCONFIGURED until something triggers it; `modular_launch.py` shows the `ChangeState` events.
+- A lifecycle node started by a launch file stays UNCONFIGURED until something triggers it; `modular_launch.py` shows the `ChangeState` events. The auto-activate handler needs `start_state="configuring"`: without it, every manual `deactivate` (active → inactive) re-activates the node.
 
 ## 7. Launch
 Template: `./templates/modular_launch.py`.
 
-- Expose environment choices with `DeclareLaunchArgument`; build paths with `PathJoinSubstitution` and `FindPackageShare` (resolved at launch time), not `get_package_share_directory` or string concatenation.
+- Expose environment choices with `DeclareLaunchArgument`, always with a `description` (shown by `ros2 launch --show-args`); build paths with `PathJoinSubstitution` and `FindPackageShare` (resolved at launch time), not `get_package_share_directory` or string concatenation.
 - Group with `GroupAction` + `PushRosNamespace`. **Do not also pass `namespace=` to nodes inside the group** or the namespace doubles (`/robot_0/robot_0/node`). `LifecycleNode` requires the argument, so pass `namespace=""`.
 - Set `use_sim_time` once with `SetParameter(name="use_sim_time", value=...)` inside the group instead of on every node.
 - `output="screen"` and `emulate_tty=True` for readable logs.

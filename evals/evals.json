@@ -1,0 +1,26 @@
+{
+  "skill_name": "ros2-python-expert",
+  "evals": [
+    {
+      "id": 1,
+      "name": "imu_pid",
+      "prompt": "Crea un pacchetto ROS 2 Python `imu_pid` con un nodo che legge /imu/data (sensor_msgs/Imu) a 100 Hz, esegue un PID a 50 Hz che pubblica geometry_msgs/Twist su /cmd_vel, ed espone un servizio std_srvs/Trigger su /reset_bias per resettare i bias. Aggiungi un launch file e un file di parametri.",
+      "expected_output": "ament_python package that builds; sensor QoS on the IMU subscription; control timer isolated from I/O; non-blocking callbacks; launch + YAML installed via data_files; node publishes /cmd_vel and answers /reset_bias.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "cmd_bridge",
+      "prompt": "Crea un pacchetto ROS 2 Python `cmd_bridge` con un nodo che, quando riceve uno std_msgs/String su /command, chiama il servizio esterno /validate (std_srvs/SetBool, data=True se il comando e' 'go') e pubblica il campo message della risposta come std_msgs/String su /command_result. Il nodo non deve mai bloccare l'executor e deve gestire il servizio assente o lento (timeout 2 s) pubblicando comunque un risultato di errore.",
+      "expected_output": "Async service call (await or done-callback) with no deadlock; timeout path publishes an error result; node stays responsive while /validate is slow.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "serial_driver",
+      "prompt": "Crea un pacchetto ROS 2 Python `serial_driver` con un lifecycle node `serial_driver_node` che simula un driver seriale: in configure apre la 'porta' (simulata), in activate pubblica sensor_msgs/Temperature su temperature a 10 Hz, in deactivate smette. Aggiungi un launch file `driver.launch.py` che lo avvia nel namespace robot_1 e lo porta automaticamente in active.",
+      "expected_output": "rclpy lifecycle node; launch reaches ACTIVE automatically; node resolves to /robot_1/serial_driver_node (namespace not doubled); publishes only while active.",
+      "files": []
+    }
+  ]
+}

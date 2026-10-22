@@ -4,11 +4,14 @@ Usage: source /opt/ros/humble/setup.bash && python3 scripts/check_templates.py
 """
 import importlib.util
 import inspect
+import os
 import pathlib
 import py_compile
 import sys
+import tempfile
 
 import rclpy
+from ament_index_python.packages import PackageNotFoundError, get_package_prefix
 from rclpy.node import Node
 
 TEMPLATES = pathlib.Path(__file__).resolve().parent.parent / "templates"
@@ -20,6 +23,9 @@ NODE_FILES = [
     "advanced_perception_recorder_node",
     "lifecycle_node",
 ]
+# Templates proven incompatible with a distro by CI, with the reason. Mirror every entry in
+# references/<distro>.md; never add one without a failing CI log behind it.
+SKIP: dict = {}
 
 
 def load(name: str):
@@ -36,14 +42,37 @@ def node_class(module):
     )
 
 
+def has_package(name: str) -> bool:
+    try:
+        get_package_prefix(name)
+        return True
+    except PackageNotFoundError:
+        return False
+
+
 def main() -> int:
+    skip = SKIP.get(os.environ.get("ROS_DISTRO", ""), {})
+    if len(sys.argv) == 3 and sys.argv[1] == "--is-skipped":
+        return 0 if sys.argv[2] in skip else 1
+    for name, reason in skip.items():
+        print(f"SKIP {name} ({reason})")
+
     for path in sorted(TEMPLATES.glob("*.py")):
-        py_compile.compile(str(path), doraise=True)
+        if path.stem not in skip:
+            py_compile.compile(str(path), doraise=True)
     print("compile: OK")
 
-    rclpy.init(args=["--ros-args", "-p", "enable_bag_recording:=false"])
+    bag_dir = tempfile.mkdtemp(prefix="check_templates_")
+    record_bag = has_package("rosbag2_storage_mcap")
+    rclpy.init(args=[
+        "--ros-args",
+        "-p", f"enable_bag_recording:={str(record_bag).lower()}",
+        "-p", f"bag_output_dir:={bag_dir}",
+    ])
     try:
         for name in NODE_FILES:
+            if name in skip:
+                continue
             node = node_class(load(name))()
             if name == "lifecycle_node":
                 for step, expected in [
@@ -60,6 +89,15 @@ def main() -> int:
     finally:
         rclpy.try_shutdown()
 
+    if record_bag and "advanced_perception_recorder_node" not in skip:
+        bags = list(pathlib.Path(bag_dir).glob("perception_*/*.mcap"))
+        assert bags, f"no .mcap written under {bag_dir}"
+        print(f"mcap: OK ({bags[0].name})")
+    else:
+        print("mcap: not checked (rosbag2_storage_mcap not installed)")
+
+    if "modular_launch" in skip:
+        return 0
     description = load("modular_launch").generate_launch_description()
     assert description.entities, "empty launch description"
     print("launch modular_launch: OK")

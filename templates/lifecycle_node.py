@@ -46,10 +46,13 @@ class ManagedControllerNode(LifecycleNode):
         return super().on_activate(state)
 
     def on_deactivate(self, state: State) -> TransitionCallbackReturn:
-        """Stop the timer so no further commands are issued."""
+        """Stop the timer and leave the actuator on a zero command."""
         self.get_logger().info(f"Deactivating from {state.label}...")
         if self._timer is not None:
             self._timer.cancel()
+        if self._pub is not None and self._pub.is_activated:
+            self._msg.data = 0.0
+            self._pub.publish(self._msg)
         return super().on_deactivate(state)
 
     def on_cleanup(self, state: State) -> TransitionCallbackReturn:

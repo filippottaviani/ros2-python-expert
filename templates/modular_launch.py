@@ -75,6 +75,7 @@ def generate_launch_description() -> LaunchDescription:
     activate_after_configure = RegisterEventHandler(
         OnStateTransition(
             target_lifecycle_node=managed_node,
+            start_state="configuring",
             goal_state="inactive",
             entities=[change_state(lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE)],
         ),

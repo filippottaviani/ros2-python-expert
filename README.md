@@ -25,8 +25,12 @@ ros2-python-expert/
 │   ├── rviz_marker_publisher_node.py
 │   ├── modular_launch.py
 │   └── launch_integration_test.py
-└── scripts/
-    └── check_templates.py         # Compile + instantiate every template
+├── scripts/
+│   └── check_templates.py         # Compile + instantiate every template (+ MCAP when available)
+├── evals/
+│   ├── evals.json                 # 3 task prompts with known traps (skill-creator schema)
+│   └── trigger_cases.json         # Should / should-not trigger queries
+└── .github/workflows/check.yml    # CI: Humble, Jazzy, Foxy (partial)
 ```
 
 Install under `~/.claude/skills/` (global) or `<workspace>/.claude/skills/` (project). The skill activates from its `description`; no `CLAUDE.md` entry is needed.

@@ -1,0 +1,12 @@
+[
+  {"query": "Scrivi un nodo rclpy che si iscrive a /scan e pubblica la distanza minima su /min_range", "should_trigger": true},
+  {"query": "Il mio subscriber Python non riceve nulla dal driver della camera, il publisher e' best effort. Come lo sistemo?", "should_trigger": true},
+  {"query": "Convert this rclpy service client so it doesn't deadlock when called from a timer callback", "should_trigger": true},
+  {"query": "Aggiungi un launch file Python con namespace e use_sim_time al mio pacchetto ament_python", "should_trigger": true},
+  {"query": "Write a launch_testing integration test for my Python ROS 2 node", "should_trigger": true},
+  {"query": "Devo mantenere un nodo Python su ROS 2 Foxy: come gestisco lo shutdown pulito?", "should_trigger": true},
+  {"query": "Write an rclcpp component node in C++ that publishes odometry", "should_trigger": false},
+  {"query": "Tune the Nav2 controller_server parameters for a differential drive robot", "should_trigger": false},
+  {"query": "Implement a ros2_control hardware interface in C++ for my motor driver", "should_trigger": false},
+  {"query": "Write a Python script that parses a CSV of temperatures and plots the daily average", "should_trigger": false}
+]
