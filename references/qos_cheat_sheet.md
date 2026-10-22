@@ -54,3 +54,24 @@ control_qos = QoSProfile(
     depth=10,
 )
 ```
+
+---
+
+## Debugging
+
+```bash
+ros2 topic info -v /topic
+```
+
+Compare the Reliability and Durability of every endpoint. `qos_profile_sensor_data` (BEST_EFFORT, KEEP_LAST 5, VOLATILE) is a ready-made sensor preset in `rclpy.qos`.
+
+```python
+from rclpy.qos_event import SubscriptionEventCallbacks
+
+callbacks = SubscriptionEventCallbacks(
+    incompatible_qos=lambda status: self.get_logger().error(f"Incompatible QoS: {status.last_policy_kind}")
+)
+self.create_subscription(Float64, "topic", self._on_msg, qos, event_callbacks=callbacks)
+```
+
+For safety topics also set `deadline` and `liveliness` in `QoSProfile` and pass the matching callbacks, instead of polling message timestamps.

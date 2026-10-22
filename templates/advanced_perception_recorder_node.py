@@ -1,7 +1,6 @@
 import os
-import shutil
 import sys
-from typing import List, Optional
+import time
 
 from diagnostic_msgs.msg import DiagnosticStatus
 from diagnostic_updater import DiagnosticStatusWrapper, Updater
@@ -25,35 +24,13 @@ class AdvancedPerceptionRecorderNode(Node):
     def __init__(self) -> None:
         super().__init__("advanced_perception_recorder_node")
 
-        self.declare_parameter("target_frame", "base_link")
-        self.declare_parameter("source_frame", "sensor_mount_link")
-        self.declare_parameter("sync_slop_sec", 0.05)
-        self.declare_parameter("sync_queue_size", 10)
-        self.declare_parameter("max_temperature_c", 75.0)
-        self.declare_parameter("bag_output_uri", "/tmp/perception_telemetry_bag")
-        self.declare_parameter("enable_bag_recording", True)
-
-        self._target_frame: str = (
-            self.get_parameter("target_frame").get_parameter_value().string_value
-        )
-        self._source_frame: str = (
-            self.get_parameter("source_frame").get_parameter_value().string_value
-        )
-        self._sync_slop: float = (
-            self.get_parameter("sync_slop_sec").get_parameter_value().double_value
-        )
-        self._queue_size: int = (
-            self.get_parameter("sync_queue_size").get_parameter_value().integer_value
-        )
-        self._max_temp_c: float = (
-            self.get_parameter("max_temperature_c").get_parameter_value().double_value
-        )
-        self._bag_uri: str = (
-            self.get_parameter("bag_output_uri").get_parameter_value().string_value
-        )
-        self._record_bag: bool = (
-            self.get_parameter("enable_bag_recording").get_parameter_value().bool_value
-        )
+        self._target_frame: str = self.declare_parameter("target_frame", "base_link").value
+        self._source_frame: str = self.declare_parameter("source_frame", "sensor_mount_link").value
+        self._sync_slop: float = self.declare_parameter("sync_slop_sec", 0.05).value
+        self._queue_size: int = self.declare_parameter("sync_queue_size", 10).value
+        self._max_temp_c: float = self.declare_parameter("max_temperature_c", 75.0).value
+        self._bag_dir: str = self.declare_parameter("bag_output_dir", "/tmp").value
+        self._record_bag: bool = self.declare_parameter("enable_bag_recording", True).value
 
         self._latest_temp: float = 25.0
         self._synced_packets_count: int = 0
@@ -67,7 +44,7 @@ class AdvancedPerceptionRecorderNode(Node):
             self._tf_buffer, self, spin_thread=False
         )
 
-        self._bag_writer: Optional[rosbag2_py.SequentialWriter] = None
+        self._bag_writer: rosbag2_py.SequentialWriter | None = None
         if self._record_bag:
             self._initialize_mcap_writer()
 
@@ -100,13 +77,9 @@ class AdvancedPerceptionRecorderNode(Node):
 
     def _initialize_mcap_writer(self) -> None:
         """Configure rosbag2_py SequentialWriter with MCAP storage backend."""
-        if os.path.exists(self._bag_uri):
-            shutil.rmtree(self._bag_uri)
-
+        bag_uri = os.path.join(self._bag_dir, time.strftime("perception_%Y%m%d_%H%M%S"))
         self._bag_writer = rosbag2_py.SequentialWriter()
-        storage_options = rosbag2_py.StorageOptions(
-            uri=self._bag_uri, storage_id="mcap"
-        )
+        storage_options = rosbag2_py.StorageOptions(uri=bag_uri, storage_id="mcap")
         converter_options = rosbag2_py.ConverterOptions(
             input_serialization_format="cdr",
             output_serialization_format="cdr",
@@ -134,25 +107,13 @@ class AdvancedPerceptionRecorderNode(Node):
         self._synced_packets_count += 1
 
         try:
-            if self._tf_buffer.can_transform(
+            transform: TransformStamped = self._tf_buffer.lookup_transform(
                 self._target_frame,
                 self._source_frame,
                 rclpy.time.Time(),
                 timeout=Duration(seconds=0.0),
-            ):
-                transform: TransformStamped = self._tf_buffer.lookup_transform(
-                    self._target_frame,
-                    self._source_frame,
-                    rclpy.time.Time(),
-                    timeout=Duration(seconds=0.0),
-                )
-                _ = transform.transform.translation.z
-            else:
-                self._tf_lookup_failures += 1
-                self.get_logger().warn(
-                    f"Transform {self._source_frame} -> {self._target_frame} unavailable.",
-                    throttle_duration_sec=2.0,
-                )
+            )
+            _ = transform.transform.translation.z
         except TransformException as exc:
             self._tf_lookup_failures += 1
             self.get_logger().warn(
@@ -191,8 +152,15 @@ class AdvancedPerceptionRecorderNode(Node):
         stat.add("TF2 Lookup Failures", str(self._tf_lookup_failures))
         return stat
 
+    def destroy_node(self) -> None:
+        """Flush and close the bag before the node goes away."""
+        if self._bag_writer is not None:
+            self._bag_writer.close()
+            self._bag_writer = None
+        super().destroy_node()
 
-def main(args: Optional[List[str]] = None) -> None:
+
+def main(args: list[str] | None = None) -> None:
     """Entry point for the advanced perception and recorder node."""
     rclpy.init(args=args)
     node = AdvancedPerceptionRecorderNode()

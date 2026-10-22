@@ -1,5 +1,4 @@
 import sys
-from typing import Dict, List, Optional
 
 import rclpy
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
@@ -15,18 +14,11 @@ class AsyncServiceOrchestratorNode(Node):
     def __init__(self) -> None:
         super().__init__("async_service_orchestrator_node")
 
-        self.declare_parameter("health_check_period_sec", 2.0)
-        self.declare_parameter("service_timeout_sec", 1.0)
-
-        self._check_period: float = (
-            self.get_parameter("health_check_period_sec").get_parameter_value().double_value
-        )
-        self._timeout_sec: float = (
-            self.get_parameter("service_timeout_sec").get_parameter_value().double_value
-        )
+        self._check_period: float = self.declare_parameter("health_check_period_sec", 2.0).value
+        self._timeout_sec: float = self.declare_parameter("service_timeout_sec", 1.0).value
 
         self._system_armed: bool = False
-        self._pending_futures: Dict[Future, float] = {}
+        self._pending_futures: dict[Future, float] = {}
 
         self._reentrant_group = ReentrantCallbackGroup()
         self._timer_group = MutuallyExclusiveCallbackGroup()
@@ -79,6 +71,7 @@ class AsyncServiceOrchestratorNode(Node):
         ]
         for fut in expired_futures:
             fut.cancel()
+            self._diagnostics_client.remove_pending_request(fut)
             self._pending_futures.pop(fut, None)
             self.get_logger().error("Asynchronous service request timed out and was canceled.")
 
@@ -101,7 +94,7 @@ class AsyncServiceOrchestratorNode(Node):
             return
 
         try:
-            result: Optional[Trigger.Response] = future.result()
+            result: Trigger.Response | None = future.result()
             if result is not None and result.success:
                 self.get_logger().debug(f"Hardware check OK: {result.message}")
             else:
@@ -113,7 +106,7 @@ class AsyncServiceOrchestratorNode(Node):
             self.get_logger().error(f"Service invocation raised exception: {exc}")
 
 
-def main(args: Optional[List[str]] = None) -> None:
+def main(args: list[str] | None = None) -> None:
     """Entry point for the asynchronous service orchestrator node."""
     rclpy.init(args=args)
     node = AsyncServiceOrchestratorNode()

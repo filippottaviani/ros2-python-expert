@@ -1,5 +1,4 @@
 import sys
-from typing import List, Optional
 
 from action_msgs.msg import GoalStatus
 from example_interfaces.action import Fibonacci
@@ -19,25 +18,15 @@ class PreemptableActionNode(Node):
     def __init__(self) -> None:
         super().__init__("preemptable_action_node")
 
-        self.declare_parameter("execution_rate_hz", 5.0)
-        self.declare_parameter("max_allowed_order", 25)
-        self.declare_parameter("client_cancel_threshold", 50)
-
-        self._rate_hz: float = (
-            self.get_parameter("execution_rate_hz").get_parameter_value().double_value
-        )
-        self._max_order: int = (
-            self.get_parameter("max_allowed_order").get_parameter_value().integer_value
-        )
-        self._cancel_threshold: int = (
-            self.get_parameter("client_cancel_threshold").get_parameter_value().integer_value
-        )
+        self._rate_hz: float = self.declare_parameter("execution_rate_hz", 5.0).value
+        self._max_order: int = self.declare_parameter("max_allowed_order", 25).value
+        self._cancel_threshold: int = self.declare_parameter("client_cancel_threshold", 50).value
 
         self._reentrant_group = ReentrantCallbackGroup()
-        self._active_goal_handle: Optional[ClientGoalHandle] = None
-        self._send_goal_future: Optional[Future] = None
-        self._get_result_future: Optional[Future] = None
-        self._cancel_goal_future: Optional[Future] = None
+        self._active_goal_handle: ClientGoalHandle | None = None
+        self._send_goal_future: Future | None = None
+        self._get_result_future: Future | None = None
+        self._cancel_goal_future: Future | None = None
         self._cancellation_in_progress: bool = False
 
         self._action_server = ActionServer(
@@ -78,23 +67,25 @@ class PreemptableActionNode(Node):
         """Execute long-running goal iteratively while monitoring cancellation requests."""
         feedback_msg = Fibonacci.Feedback()
         feedback_msg.sequence = [0, 1]
+        result = Fibonacci.Result()
         loop_rate = self.create_rate(self._rate_hz)
 
-        for i in range(1, goal_handle.request.order):
-            if goal_handle.is_cancel_requested:
-                goal_handle.canceled()
-                result = Fibonacci.Result()
-                result.sequence = feedback_msg.sequence
-                self.get_logger().info("Goal execution preempted and marked as CANCELED.")
-                return result
+        try:
+            for i in range(1, goal_handle.request.order):
+                if goal_handle.is_cancel_requested:
+                    goal_handle.canceled()
+                    result.sequence = feedback_msg.sequence
+                    self.get_logger().info("Goal execution preempted and marked as CANCELED.")
+                    return result
 
-            next_val = feedback_msg.sequence[i] + feedback_msg.sequence[i - 1]
-            feedback_msg.sequence.append(next_val)
-            goal_handle.publish_feedback(feedback_msg)
-            loop_rate.sleep()
+                next_val = feedback_msg.sequence[i] + feedback_msg.sequence[i - 1]
+                feedback_msg.sequence.append(next_val)
+                goal_handle.publish_feedback(feedback_msg)
+                loop_rate.sleep()
+        finally:
+            self.destroy_rate(loop_rate)
 
         goal_handle.succeed()
-        result = Fibonacci.Result()
         result.sequence = feedback_msg.sequence
         self.get_logger().info("Goal execution completed successfully.")
         return result
@@ -118,7 +109,7 @@ class PreemptableActionNode(Node):
 
     def _on_goal_response(self, future: Future) -> None:
         """Handle goal acceptance or rejection from the ActionServer."""
-        goal_handle: Optional[ClientGoalHandle] = future.result()
+        goal_handle: ClientGoalHandle | None = future.result()
         if goal_handle is None or not goal_handle.accepted:
             self.get_logger().warn("Goal was rejected by the remote ActionServer.")
             return
@@ -163,7 +154,7 @@ class PreemptableActionNode(Node):
             return
 
         status: int = wrapped_result.status
-        sequence: List[int] = list(wrapped_result.result.sequence)
+        sequence: list[int] = list(wrapped_result.result.sequence)
 
         if status == GoalStatus.STATUS_SUCCEEDED:
             self.get_logger().info(f"Action SUCCEEDED with final sequence: {sequence}")
@@ -173,7 +164,7 @@ class PreemptableActionNode(Node):
             self.get_logger().error("Action ABORTED by server.")
 
 
-def main(args: Optional[List[str]] = None) -> None:
+def main(args: list[str] | None = None) -> None:
     """Entry point for the preemptable action node."""
     rclpy.init(args=args)
     node = PreemptableActionNode()

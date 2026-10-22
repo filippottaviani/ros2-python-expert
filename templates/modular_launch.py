@@ -1,9 +1,19 @@
-from ament_index_python.packages import get_package_share_directory
+import lifecycle_msgs.msg
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, LogInfo
+from launch.actions import (
+    DeclareLaunchArgument,
+    EmitEvent,
+    GroupAction,
+    LogInfo,
+    RegisterEventHandler,
+)
 from launch.conditions import IfCondition
+from launch.events import matches_action
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
-from launch_ros.actions import LifecycleNode, Node, PushRosNamespace
+from launch_ros.actions import LifecycleNode, Node, PushRosNamespace, SetParameter
+from launch_ros.event_handlers import OnStateTransition
+from launch_ros.events.lifecycle import ChangeState
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -28,7 +38,7 @@ def generate_launch_description() -> LaunchDescription:
         "config_file",
         default_value=PathJoinSubstitution(
             [
-                get_package_share_directory("example_package"),
+                FindPackageShare("example_package"),
                 "config",
                 "default_params.yaml",
             ]
@@ -41,37 +51,53 @@ def generate_launch_description() -> LaunchDescription:
     enable_managed_node = LaunchConfiguration("enable_managed_node")
     config_file = LaunchConfiguration("config_file")
 
+    managed_node = LifecycleNode(
+        package="example_package",
+        executable="managed_controller_node",
+        name="managed_controller_node",
+        namespace="",
+        output="screen",
+        emulate_tty=True,
+        parameters=[config_file],
+        condition=IfCondition(enable_managed_node),
+    )
+
+    def change_state(transition_id: int) -> EmitEvent:
+        return EmitEvent(
+            event=ChangeState(
+                lifecycle_node_matcher=matches_action(managed_node),
+                transition_id=transition_id,
+            ),
+            condition=IfCondition(enable_managed_node),
+        )
+
+    configure_managed_node = change_state(lifecycle_msgs.msg.Transition.TRANSITION_CONFIGURE)
+    activate_after_configure = RegisterEventHandler(
+        OnStateTransition(
+            target_lifecycle_node=managed_node,
+            goal_state="inactive",
+            entities=[change_state(lifecycle_msgs.msg.Transition.TRANSITION_ACTIVATE)],
+        ),
+        condition=IfCondition(enable_managed_node),
+    )
+
     namespaced_group = GroupAction(
         actions=[
             PushRosNamespace(robot_namespace),
+            SetParameter(name="use_sim_time", value=use_sim_time),
             Node(
                 package="example_package",
                 executable="production_reference_node",
                 name="production_reference_node",
                 output="screen",
                 emulate_tty=True,
-                parameters=[
-                    config_file,
-                    {"use_sim_time": use_sim_time},
-                ],
+                parameters=[config_file],
                 remappings=[
                     ("sensor/data", "hardware/sensor_stream"),
                     ("control/command", "actuators/target_command"),
                 ],
             ),
-            LifecycleNode(
-                package="example_package",
-                executable="managed_controller_node",
-                name="managed_controller_node",
-                namespace=robot_namespace,
-                output="screen",
-                emulate_tty=True,
-                parameters=[
-                    config_file,
-                    {"use_sim_time": use_sim_time},
-                ],
-                condition=IfCondition(enable_managed_node),
-            ),
+            managed_node,
         ]
     )
 
@@ -83,5 +109,7 @@ def generate_launch_description() -> LaunchDescription:
             config_file_arg,
             LogInfo(msg=["Launching system in namespace: ", robot_namespace]),
             namespaced_group,
+            activate_after_configure,
+            configure_managed_node,
         ]
     )

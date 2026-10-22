@@ -1,6 +1,5 @@
 import math
 import sys
-from typing import List, Optional
 
 from builtin_interfaces.msg import Duration as DurationMsg
 import rclpy
@@ -16,19 +15,9 @@ class RvizMarkerArrayPublisherNode(Node):
     def __init__(self) -> None:
         super().__init__("rviz_marker_array_publisher_node")
 
-        self.declare_parameter("reference_frame", "map")
-        self.declare_parameter("publish_rate_hz", 10.0)
-        self.declare_parameter("orbit_radius_m", 2.0)
-
-        self._frame_id: str = (
-            self.get_parameter("reference_frame").get_parameter_value().string_value
-        )
-        self._rate_hz: float = (
-            self.get_parameter("publish_rate_hz").get_parameter_value().double_value
-        )
-        self._radius: float = (
-            self.get_parameter("orbit_radius_m").get_parameter_value().double_value
-        )
+        self._frame_id: str = self.declare_parameter("reference_frame", "map").value
+        self._rate_hz: float = self.declare_parameter("publish_rate_hz", 10.0).value
+        self._radius: float = self.declare_parameter("orbit_radius_m", 2.0).value
         self._phase_rad: float = 0.0
 
         vis_qos = QoSProfile(
@@ -83,7 +72,7 @@ class RvizMarkerArrayPublisherNode(Node):
         self._phase_rad = (self._phase_rad + 0.05) % (2.0 * math.pi)
 
 
-def main(args: Optional[List[str]] = None) -> None:
+def main(args: list[str] | None = None) -> None:
     """Entry point for the RViz MarkerArray publisher node."""
     rclpy.init(args=args)
     node = RvizMarkerArrayPublisherNode()
