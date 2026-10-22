@@ -43,11 +43,13 @@ jobs:
           ament_flake8 templates/*.py scripts/*.py
 
       - name: Smoke-check templates
+        if: always()
         run: |
           source /opt/ros/${{ matrix.distro }}/setup.bash
           python3 scripts/check_templates.py
 
       - name: Integration test
+        if: always()
         run: |
           source /opt/ros/${{ matrix.distro }}/setup.bash
           if python3 scripts/check_templates.py --is-skipped reference_node; then

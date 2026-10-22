@@ -86,18 +86,23 @@ class AdvancedPerceptionRecorderNode(Node):
         )
         self._bag_writer.open(storage_options, converter_options)
 
-        temp_meta = rosbag2_py.TopicMetadata(
-            name="sensors/temperature",
-            type="sensor_msgs/msg/Temperature",
-            serialization_format="cdr",
-        )
-        pressure_meta = rosbag2_py.TopicMetadata(
-            name="sensors/pressure",
-            type="sensor_msgs/msg/FluidPressure",
-            serialization_format="cdr",
-        )
-        self._bag_writer.create_topic(temp_meta)
-        self._bag_writer.create_topic(pressure_meta)
+        for name, type_name in [
+            ("sensors/temperature", "sensor_msgs/msg/Temperature"),
+            ("sensors/pressure", "sensor_msgs/msg/FluidPressure"),
+        ]:
+            self._bag_writer.create_topic(self._topic_metadata(name, type_name))
+
+    @staticmethod
+    def _topic_metadata(name: str, type_name: str) -> rosbag2_py.TopicMetadata:
+        """Build TopicMetadata; Jazzy and later require ``id``, Humble does not accept it."""
+        try:
+            return rosbag2_py.TopicMetadata(
+                id=0, name=name, type=type_name, serialization_format="cdr"
+            )
+        except TypeError:
+            return rosbag2_py.TopicMetadata(
+                name=name, type=type_name, serialization_format="cdr"
+            )
 
     def _on_synchronized_telemetry(
         self, temp_msg: Temperature, pressure_msg: FluidPressure

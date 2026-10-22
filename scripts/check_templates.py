@@ -50,6 +50,23 @@ def has_package(name: str) -> bool:
         return False
 
 
+def check_node(name: str) -> None:
+    node = node_class(load(name))()
+    try:
+        if name == "lifecycle_node":
+            for step, expected in [
+                ("trigger_configure", "inactive"),
+                ("trigger_activate", "active"),
+                ("trigger_deactivate", "inactive"),
+                ("trigger_cleanup", "unconfigured"),
+            ]:
+                getattr(node, step)()
+                state = node._state_machine.current_state[1]
+                assert state == expected, f"{step}: {state} != {expected}"
+    finally:
+        node.destroy_node()
+
+
 def main() -> int:
     skip = SKIP.get(os.environ.get("ROS_DISTRO", ""), {})
     if len(sys.argv) == 3 and sys.argv[1] == "--is-skipped":
@@ -69,39 +86,42 @@ def main() -> int:
         "-p", f"enable_bag_recording:={str(record_bag).lower()}",
         "-p", f"bag_output_dir:={bag_dir}",
     ])
+    failures = []
     try:
         for name in NODE_FILES:
             if name in skip:
                 continue
-            node = node_class(load(name))()
-            if name == "lifecycle_node":
-                for step, expected in [
-                    ("trigger_configure", "inactive"),
-                    ("trigger_activate", "active"),
-                    ("trigger_deactivate", "inactive"),
-                    ("trigger_cleanup", "unconfigured"),
-                ]:
-                    getattr(node, step)()
-                    state = node._state_machine.current_state[1]
-                    assert state == expected, f"{step}: {state} != {expected}"
-            node.destroy_node()
-            print(f"node {name}: OK")
+            try:
+                check_node(name)
+                print(f"node {name}: OK")
+            except Exception as exc:
+                failures.append(name)
+                print(f"node {name}: FAIL {type(exc).__name__}: {exc}")
     finally:
         rclpy.try_shutdown()
 
-    if record_bag and "advanced_perception_recorder_node" not in skip:
-        bags = list(pathlib.Path(bag_dir).glob("perception_*/*.mcap"))
-        assert bags, f"no .mcap written under {bag_dir}"
-        print(f"mcap: OK ({bags[0].name})")
-    else:
+    perception = "advanced_perception_recorder_node"
+    if not record_bag:
         print("mcap: not checked (rosbag2_storage_mcap not installed)")
+    elif perception not in {*skip, *failures}:
+        bags = list(pathlib.Path(bag_dir).glob("perception_*/*.mcap"))
+        if bags:
+            print(f"mcap: OK ({bags[0].name})")
+        else:
+            failures.append("mcap")
+            print(f"mcap: FAIL no .mcap written under {bag_dir}")
 
-    if "modular_launch" in skip:
-        return 0
-    description = load("modular_launch").generate_launch_description()
-    assert description.entities, "empty launch description"
-    print("launch modular_launch: OK")
-    return 0
+    if "modular_launch" not in skip:
+        try:
+            assert load("modular_launch").generate_launch_description().entities
+            print("launch modular_launch: OK")
+        except Exception as exc:
+            failures.append("modular_launch")
+            print(f"launch modular_launch: FAIL {type(exc).__name__}: {exc}")
+
+    if failures:
+        print(f"FAILED: {', '.join(failures)}")
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":
