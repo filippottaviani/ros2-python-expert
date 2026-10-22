@@ -35,6 +35,20 @@
       "prompt": "Crea un pacchetto ROS 2 Python `arm_driver` con un lifecycle node `arm_driver_node` (eseguibile `arm_driver_node`) che pubblica std_msgs/Float64 su `joint_state` a 10 Hz solo quando e' attivo. Il launch file `arm.launch.py` lo avvia nel namespace `robot_1` e lo porta automaticamente in active all'avvio. Requisito: se un operatore lo disattiva a mano con `ros2 lifecycle set /robot_1/arm_driver_node deactivate`, deve restare inactive.",
       "expected_output": "Reaches active after launch; after a manual deactivate it stays inactive (the auto-activate handler must fire only after configure, start_state='configuring').",
       "files": []
+    },
+    {
+      "id": 6,
+      "name": "job_runner",
+      "prompt": "Crea un pacchetto ROS 2 Python `job_runner` con un nodo `job_runner_node` (eseguibile `job_runner_node`) che espone un action server `run_job` (example_interfaces/action/Fibonacci: il goal `order` indica i passi, ogni passo dura 1 secondo, con feedback a ogni passo, cancellabile) e un servizio `status` (std_srvs/Trigger) che risponde con message `busy` se un job e' in esecuzione, altrimenti `idle`. Il servizio `status` deve rispondere subito (entro mezzo secondo) anche mentre un job e' in esecuzione.",
+      "expected_output": "status answers 'busy' within 0.5 s while a 10-step goal runs (needs separate/reentrant callback groups under a MultiThreadedExecutor), the goal can be cancelled, and status returns 'idle' afterwards.",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "sync_pair",
+      "prompt": "Crea un pacchetto ROS 2 Python `sync_pair` con un nodo `sync_pair_node` (eseguibile `sync_pair_node`) che sincronizza per timestamp i topic `camera/image` (sensor_msgs/Image) e `lidar/scan` (sensor_msgs/LaserScan), entrambi pubblicati dai sensori con QoS BEST_EFFORT, con tolleranza di 50 ms, e pubblica su `sync_count` (std_msgs/Int32) il numero totale di coppie sincronizzate finora.",
+      "expected_output": "message_filters subscribers created with a BEST_EFFORT qos_profile (the default RELIABLE subscriber receives nothing from BEST_EFFORT publishers); sync_count increases while matching-stamp messages arrive.",
+      "files": []
     }
   ]
 }
