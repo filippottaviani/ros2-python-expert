@@ -1,6 +1,6 @@
 ---
 name: ros2-python-expert
-description: Engineering guidelines and templates for production ROS 2 Python (rclpy) nodes on Humble. Trigger when writing, refactoring or debugging rclpy topics, services, actions, TF2, QoS, executors, callback groups, parameters, lifecycle nodes, message_filters, diagnostic_updater, rosbag2_py, RViz markers, launch files, launch_testing, or ament_python packaging (setup.py, package.xml). Python only; for C++, Nav2, MoveIt or ros2_control use ros2-engineering-skills.
+description: Engineering guidelines and templates for production ROS 2 Python (rclpy) nodes on Humble and Jazzy, with notes for legacy Foxy. Trigger when writing, refactoring or debugging rclpy topics, services, actions, TF2, QoS, executors, callback groups, parameters, lifecycle nodes, message_filters, diagnostic_updater, rosbag2_py, RViz markers, launch files, launch_testing, or ament_python packaging (setup.py, package.xml). Python only; for C++, Nav2, MoveIt or ros2_control use ros2-engineering-skills.
 allowed-tools:
   - Read
   - Edit
@@ -17,7 +17,12 @@ allowed-tools:
 
 # ROS 2 Python (`rclpy`) Engineering Skill
 
-Target: **ROS 2 Humble, Python 3.10** (`/opt/ros/humble`). Verify an rclpy API against the installed source before relying on it. On newer distros some things differ: `create_timer(autostart=...)` and `EventsExecutor` do not exist in Humble.
+Target: **ROS 2 Humble and Jazzy** (CI checks both). Foxy is EOL: see `./references/foxy.md`, the templates do not run there. Verify an rclpy API against the installed source before relying on it. `create_timer(autostart=...)` and `EventsExecutor` do not exist in Humble. Differences confirmed by CI or upstream source:
+
+| Topic | Humble | Jazzy and later |
+| :--- | :--- | :--- |
+| `ament_flake8` | plain flake8 | adds quotes, import-order, docstrings plugins (see §1) |
+| `rosbag2_py.TopicMetadata(...)` | no `id` argument | `id` is required |
 
 ## 1. Coding Standards
 - PEP 8 with a 99-column limit, **single-quoted strings** and triple-double-quoted docstrings, imports sorted by module name (google style, `import` and `from` mixed). Humble's `ament_flake8` is plain flake8 and accepts anything, but Jazzy and later add `flake8-quotes`, `flake8-import-order`, `flake8-docstrings`: code written in another style passes on Humble and fails `colcon test` on Jazzy. `snake_case` for functions, variables and ROS names, `PascalCase` for classes.
@@ -127,6 +132,7 @@ Read and adapt the matching file before generating code.
 | Modular launch with namespace, sim time, lifecycle activation | `templates/modular_launch.py` |
 | launch_testing integration test | `templates/launch_integration_test.py` |
 | QoS compatibility matrix and presets | `references/qos_cheat_sheet.md` |
+| Maintaining Foxy code (what breaks, replacements) | `references/foxy.md` |
 | ament_python packaging, custom interfaces, build/test | `references/packaging.md` |
 | Template smoke check | `scripts/check_templates.py` |
 

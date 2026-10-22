@@ -1,6 +1,6 @@
 # ROS 2 Python Expert Skill (`ros2-python-expert`)
 
-Agent skill, rulebook and template registry for building production-grade ROS 2 **Humble** packages with `rclpy`. It targets the mistakes generic assistants make most often:
+Agent skill, rulebook and template registry for building production-grade ROS 2 **Humble and Jazzy** packages with `rclpy`. It targets the mistakes generic assistants make most often:
 
 - deadlocks from synchronous service/action calls and shared mutually exclusive callback groups;
 - QoS mismatches that silently drop messages;
@@ -15,7 +15,8 @@ ros2-python-expert/
 ├── SKILL.md                       # Rules and the template registry (what the agent reads)
 ├── references/
 │   ├── qos_cheat_sheet.md         # QoS compatibility matrix, presets, debugging
-│   └── packaging.md               # ament_python files, custom interfaces, build/test
+│   ├── packaging.md               # ament_python files, custom interfaces, build/test
+│   └── foxy.md                    # What breaks on EOL Foxy and the replacements
 ├── templates/
 │   ├── reference_node.py          # Topics + service + action + parameters
 │   ├── service_server_client_node.py

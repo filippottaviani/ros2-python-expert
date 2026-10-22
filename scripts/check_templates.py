@@ -23,9 +23,21 @@ NODE_FILES = [
     'advanced_perception_recorder_node',
     'lifecycle_node',
 ]
-# Templates proven incompatible with a distro by CI, with the reason. Mirror every entry in
-# references/<distro>.md; never add one without a failing CI log behind it.
-SKIP: dict = {}
+# Templates incompatible with a distro, with the reason. Mirror every entry in
+# references/<distro>.md; never add one without CI or upstream-source evidence behind it.
+_FOXY_PY38 = (
+    'Python 3.8 cannot evaluate list[str] | None in signatures; rclpy.try_shutdown is missing'
+)
+SKIP: dict = {
+    'foxy': {
+        'reference_node': _FOXY_PY38,
+        'action_server_client_node': _FOXY_PY38,
+        'service_server_client_node': _FOXY_PY38,
+        'rviz_marker_publisher_node': _FOXY_PY38,
+        'advanced_perception_recorder_node': _FOXY_PY38 + '; rosbag2_py is not packaged',
+        'lifecycle_node': 'rclpy has no lifecycle API in Foxy',
+    },
+}
 
 
 def load(name: str):
