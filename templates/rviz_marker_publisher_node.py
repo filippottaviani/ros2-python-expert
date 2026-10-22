@@ -13,11 +13,11 @@ class RvizMarkerArrayPublisherNode(Node):
     """Production template for publishing dynamic 3D MarkerArrays to RViz."""
 
     def __init__(self) -> None:
-        super().__init__("rviz_marker_array_publisher_node")
+        super().__init__('rviz_marker_array_publisher_node')
 
-        self._frame_id: str = self.declare_parameter("reference_frame", "map").value
-        self._rate_hz: float = self.declare_parameter("publish_rate_hz", 10.0).value
-        self._radius: float = self.declare_parameter("orbit_radius_m", 2.0).value
+        self._frame_id: str = self.declare_parameter('reference_frame', 'map').value
+        self._rate_hz: float = self.declare_parameter('publish_rate_hz', 10.0).value
+        self._radius: float = self.declare_parameter('orbit_radius_m', 2.0).value
         self._phase_rad: float = 0.0
 
         vis_qos = QoSProfile(
@@ -28,10 +28,10 @@ class RvizMarkerArrayPublisherNode(Node):
         )
 
         self._marker_pub = self.create_publisher(
-            MarkerArray, "visualization_marker_array", vis_qos
+            MarkerArray, 'visualization_marker_array', vis_qos
         )
         self._timer = self.create_timer(1.0 / self._rate_hz, self._on_publish_markers)
-        self.get_logger().info("RvizMarkerArrayPublisherNode started.")
+        self.get_logger().info('RvizMarkerArrayPublisherNode started.')
 
     def _on_publish_markers(self) -> None:
         """Construct and publish a batch of 3D markers with valid alpha and quaternion."""
@@ -43,7 +43,7 @@ class RvizMarkerArrayPublisherNode(Node):
             marker = Marker()
             marker.header.frame_id = self._frame_id
             marker.header.stamp = now_msg
-            marker.ns = "dynamic_obstacles"
+            marker.ns = 'dynamic_obstacles'
             marker.id = idx
             marker.type = Marker.SPHERE if idx % 2 == 0 else Marker.CUBE
             marker.action = Marker.ADD
@@ -89,5 +89,5 @@ def main(args: list[str] | None = None) -> None:
         rclpy.try_shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(sys.argv)

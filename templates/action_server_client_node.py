@@ -16,11 +16,11 @@ class PreemptableActionNode(Node):
     """Production template demonstrating both a preemptable ActionServer and an ActionClient."""
 
     def __init__(self) -> None:
-        super().__init__("preemptable_action_node")
+        super().__init__('preemptable_action_node')
 
-        self._rate_hz: float = self.declare_parameter("execution_rate_hz", 5.0).value
-        self._max_order: int = self.declare_parameter("max_allowed_order", 25).value
-        self._cancel_threshold: int = self.declare_parameter("client_cancel_threshold", 50).value
+        self._rate_hz: float = self.declare_parameter('execution_rate_hz', 5.0).value
+        self._max_order: int = self.declare_parameter('max_allowed_order', 25).value
+        self._cancel_threshold: int = self.declare_parameter('client_cancel_threshold', 50).value
 
         self._reentrant_group = ReentrantCallbackGroup()
         self._active_goal_handle: ClientGoalHandle | None = None
@@ -32,7 +32,7 @@ class PreemptableActionNode(Node):
         self._action_server = ActionServer(
             self,
             Fibonacci,
-            "compute_fibonacci",
+            'compute_fibonacci',
             execute_callback=self._execute_goal_callback,
             goal_callback=self._on_goal_request,
             cancel_callback=self._on_cancel_request,
@@ -42,25 +42,25 @@ class PreemptableActionNode(Node):
         self._action_client = ActionClient(
             self,
             Fibonacci,
-            "compute_fibonacci",
+            'compute_fibonacci',
             callback_group=self._reentrant_group,
         )
 
-        self.get_logger().info("PreemptableActionNode initialized and ready.")
+        self.get_logger().info('PreemptableActionNode initialized and ready.')
 
     def _on_goal_request(self, goal_request: Fibonacci.Goal) -> GoalResponse:
         """Validate incoming goal boundaries before accepting execution."""
         if goal_request.order <= 0 or goal_request.order > self._max_order:
             self.get_logger().warn(
-                f"Rejected goal with invalid order {goal_request.order} (max: {self._max_order})."
+                f'Rejected goal with invalid order {goal_request.order} (max: {self._max_order}).'
             )
             return GoalResponse.REJECT
-        self.get_logger().info(f"Accepted goal request with order {goal_request.order}.")
+        self.get_logger().info(f'Accepted goal request with order {goal_request.order}.')
         return GoalResponse.ACCEPT
 
     def _on_cancel_request(self, goal_handle: ServerGoalHandle) -> CancelResponse:
         """Accept preemption and cancellation requests from any connected client."""
-        self.get_logger().info("Received request to cancel active goal.")
+        self.get_logger().info('Received request to cancel active goal.')
         return CancelResponse.ACCEPT
 
     def _execute_goal_callback(self, goal_handle: ServerGoalHandle) -> Fibonacci.Result:
@@ -75,7 +75,7 @@ class PreemptableActionNode(Node):
                 if goal_handle.is_cancel_requested:
                     goal_handle.canceled()
                     result.sequence = feedback_msg.sequence
-                    self.get_logger().info("Goal execution preempted and marked as CANCELED.")
+                    self.get_logger().info('Goal execution preempted and marked as CANCELED.')
                     return result
 
                 next_val = feedback_msg.sequence[i] + feedback_msg.sequence[i - 1]
@@ -87,13 +87,13 @@ class PreemptableActionNode(Node):
 
         goal_handle.succeed()
         result.sequence = feedback_msg.sequence
-        self.get_logger().info("Goal execution completed successfully.")
+        self.get_logger().info('Goal execution completed successfully.')
         return result
 
     def dispatch_goal_async(self, order: int) -> bool:
         """Send an asynchronous action goal if the server is ready."""
         if not self._action_client.server_is_ready():
-            self.get_logger().warn("Action server is not ready; aborting goal dispatch.")
+            self.get_logger().warn('Action server is not ready; aborting goal dispatch.')
             return False
 
         goal_msg = Fibonacci.Goal()
@@ -111,11 +111,11 @@ class PreemptableActionNode(Node):
         """Handle goal acceptance or rejection from the ActionServer."""
         goal_handle: ClientGoalHandle | None = future.result()
         if goal_handle is None or not goal_handle.accepted:
-            self.get_logger().warn("Goal was rejected by the remote ActionServer.")
+            self.get_logger().warn('Goal was rejected by the remote ActionServer.')
             return
 
         self._active_goal_handle = goal_handle
-        self.get_logger().info("Goal accepted by server; awaiting asynchronous result.")
+        self.get_logger().info('Goal accepted by server; awaiting asynchronous result.')
         self._get_result_future = goal_handle.get_result_async()
         self._get_result_future.add_done_callback(self._on_result_received)
 
@@ -123,7 +123,7 @@ class PreemptableActionNode(Node):
         """Monitor intermediate feedback and trigger async cancellation if threshold exceeded."""
         current_seq = feedback_msg.feedback.sequence
         latest_val = current_seq[-1] if current_seq else 0
-        self.get_logger().info(f"Feedback sequence latest value: {latest_val}")
+        self.get_logger().info(f'Feedback sequence latest value: {latest_val}')
 
         if (
             latest_val > self._cancel_threshold
@@ -132,7 +132,7 @@ class PreemptableActionNode(Node):
         ):
             self._cancellation_in_progress = True
             self.get_logger().warn(
-                f"Value {latest_val} exceeded threshold {self._cancel_threshold}; canceling goal."
+                f'Value {latest_val} exceeded threshold {self._cancel_threshold}; canceling goal.'
             )
             self._cancel_goal_future = self._active_goal_handle.cancel_goal_async()
             self._cancel_goal_future.add_done_callback(self._on_cancel_done)
@@ -141,27 +141,27 @@ class PreemptableActionNode(Node):
         """Confirm that the cancellation request was processed by the server."""
         cancel_response = future.result()
         if cancel_response is not None and len(cancel_response.goals_canceling) > 0:
-            self.get_logger().info("Active goal successfully transitioned to canceling state.")
+            self.get_logger().info('Active goal successfully transitioned to canceling state.')
         else:
-            self.get_logger().error("Server failed to cancel the requested goal.")
+            self.get_logger().error('Server failed to cancel the requested goal.')
 
     def _on_result_received(self, future: Future) -> None:
         """Process terminal state and final payload of the action."""
         wrapped_result = future.result()
         self._active_goal_handle = None
         if wrapped_result is None:
-            self.get_logger().error("Received empty result wrapper from action server.")
+            self.get_logger().error('Received empty result wrapper from action server.')
             return
 
         status: int = wrapped_result.status
         sequence: list[int] = list(wrapped_result.result.sequence)
 
         if status == GoalStatus.STATUS_SUCCEEDED:
-            self.get_logger().info(f"Action SUCCEEDED with final sequence: {sequence}")
+            self.get_logger().info(f'Action SUCCEEDED with final sequence: {sequence}')
         elif status == GoalStatus.STATUS_CANCELED:
-            self.get_logger().info(f"Action CANCELED smoothly; partial sequence: {sequence}")
+            self.get_logger().info(f'Action CANCELED smoothly; partial sequence: {sequence}')
         elif status == GoalStatus.STATUS_ABORTED:
-            self.get_logger().error("Action ABORTED by server.")
+            self.get_logger().error('Action ABORTED by server.')
 
 
 def main(args: list[str] | None = None) -> None:
@@ -181,5 +181,5 @@ def main(args: list[str] | None = None) -> None:
         rclpy.try_shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(sys.argv)

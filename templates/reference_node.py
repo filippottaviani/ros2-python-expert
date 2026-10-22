@@ -1,8 +1,8 @@
 import sys
 
-import rclpy
 from example_interfaces.action import Fibonacci
 from rcl_interfaces.msg import FloatingPointRange, ParameterDescriptor, SetParametersResult
+import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
 from rclpy.action.server import ServerGoalHandle
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup, ReentrantCallbackGroup
@@ -19,18 +19,18 @@ class ProductionReferenceNode(Node):
     """Reference node demonstrating thread-safe Topics, Services, and Actions in ROS 2."""
 
     def __init__(self) -> None:
-        super().__init__("production_reference_node")
+        super().__init__('production_reference_node')
 
-        self._control_frequency: float = self.declare_parameter("control_frequency", 50.0).value
+        self._control_frequency: float = self.declare_parameter('control_frequency', 50.0).value
         self._max_velocity: float = self.declare_parameter(
-            "max_velocity",
+            'max_velocity',
             2.5,
             ParameterDescriptor(
-                description="Symmetric command clamp [m/s].",
+                description='Symmetric command clamp [m/s].',
                 floating_point_range=[FloatingPointRange(from_value=0.01, to_value=50.0)],
             ),
         ).value
-        self._sensor_timeout_sec: float = self.declare_parameter("sensor_timeout_sec", 0.5).value
+        self._sensor_timeout_sec: float = self.declare_parameter('sensor_timeout_sec', 0.5).value
         self._is_enabled: bool = False
         # (value, receive time in ns) is replaced as one tuple, so readers never see a torn pair.
         self._latest_sensor: tuple[float, int] = (0.0, 0)
@@ -56,27 +56,27 @@ class ProductionReferenceNode(Node):
 
         self._sensor_sub = self.create_subscription(
             Float64,
-            "sensor/data",
+            'sensor/data',
             self._on_sensor_data,
             sensor_qos,
             callback_group=self._reentrant_group,
         )
-        self._cmd_pub = self.create_publisher(Float64, "control/command", command_qos)
+        self._cmd_pub = self.create_publisher(Float64, 'control/command', command_qos)
         self._enable_srv = self.create_service(
             SetBool,
-            "control/enable",
+            'control/enable',
             self._on_enable_request,
             callback_group=self._reentrant_group,
         )
         self._srv_client = self.create_client(
             SetBool,
-            "external_system/ready",
+            'external_system/ready',
             callback_group=self._reentrant_group,
         )
         self._action_server = ActionServer(
             self,
             Fibonacci,
-            "execute_sequence",
+            'execute_sequence',
             execute_callback=self._execute_action_callback,
             goal_callback=self._on_goal_request,
             cancel_callback=self._on_cancel_request,
@@ -88,14 +88,14 @@ class ProductionReferenceNode(Node):
             callback_group=self._control_group,
         )
 
-        self.get_logger().info("Node initialized and ready.")
+        self.get_logger().info('Node initialized and ready.')
 
     def _on_parameters_set(self, parameters: list[Parameter]) -> SetParametersResult:
         """Apply dynamic updates; the descriptor range has already validated the value."""
         for param in parameters:
-            if param.name == "max_velocity":
+            if param.name == 'max_velocity':
                 self._max_velocity = float(param.value)
-            elif param.name == "sensor_timeout_sec":
+            elif param.name == 'sensor_timeout_sec':
                 self._sensor_timeout_sec = float(param.value)
         return SetParametersResult(successful=True)
 
@@ -115,7 +115,7 @@ class ProductionReferenceNode(Node):
         age_sec = (self.get_clock().now().nanoseconds - stamp_ns) * 1e-9
         if age_sec > self._sensor_timeout_sec:
             self.get_logger().warn(
-                "Sensor data stale; commanding zero.", throttle_duration_sec=2.0
+                'Sensor data stale; commanding zero.', throttle_duration_sec=2.0
             )
             self._publish_command(0.0)
             return
@@ -129,13 +129,13 @@ class ProductionReferenceNode(Node):
         if not self._is_enabled:
             self._publish_command(0.0)
         response.success = True
-        response.message = f"Controller enabled state set to {self._is_enabled}."
+        response.message = f'Controller enabled state set to {self._is_enabled}.'
         return response
 
     def trigger_external_check_async(self, state: bool) -> None:
         """Send an asynchronous service request without blocking the executor."""
         if not self._srv_client.service_is_ready():
-            self.get_logger().warn("External service unavailable; request aborted.")
+            self.get_logger().warn('External service unavailable; request aborted.')
             return
         req = SetBool.Request()
         req.data = state
@@ -145,9 +145,9 @@ class ProductionReferenceNode(Node):
     def _on_external_check_done(self, future: Future) -> None:
         """Handle completion of the asynchronous service call."""
         try:
-            self.get_logger().info(f"External check result: {future.result().message}")
+            self.get_logger().info(f'External check result: {future.result().message}')
         except Exception as exc:
-            self.get_logger().error(f"Service call failed: {exc}")
+            self.get_logger().error(f'Service call failed: {exc}')
 
     def _on_goal_request(self, goal_request: Fibonacci.Goal) -> GoalResponse:
         """Validate incoming action goal parameters."""
@@ -199,5 +199,5 @@ def main(args: list[str] | None = None) -> None:
         rclpy.try_shutdown()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(sys.argv)

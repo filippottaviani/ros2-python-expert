@@ -69,9 +69,9 @@ Compare the Reliability and Durability of every endpoint. `qos_profile_sensor_da
 from rclpy.qos_event import SubscriptionEventCallbacks
 
 callbacks = SubscriptionEventCallbacks(
-    incompatible_qos=lambda status: self.get_logger().error(f"Incompatible QoS: {status.last_policy_kind}")
+    incompatible_qos=lambda status: self.get_logger().error(f'Incompatible QoS: {status.last_policy_kind}')
 )
-self.create_subscription(Float64, "topic", self._on_msg, qos, event_callbacks=callbacks)
+self.create_subscription(Float64, 'topic', self._on_msg, qos, event_callbacks=callbacks)
 ```
 
 For safety topics also set `deadline` and `liveliness` in `QoSProfile` and pass the matching callbacks, instead of polling message timestamps.

@@ -3,7 +3,7 @@
 - Target is ROS 2 Humble (`/opt/ros/humble`, Python 3.10). Verify rclpy APIs against the installed source, not memory.
 - `source /opt/ros/humble/setup.bash && python3 scripts/check_templates.py` — compile, instantiate every node, walk lifecycle, build the launch.
 - `launch_test templates/launch_integration_test.py` — end-to-end test against `reference_node.py` (set a unique `ROS_DOMAIN_ID`).
-- `ament_flake8 templates/*.py scripts/*.py` — must report "No problems found" (99 cols, final newline).
+- `ament_flake8 templates/*.py scripts/*.py` — must report "No problems found" (99 cols, final newline). Humble's is plain flake8; to reproduce Jazzy's stricter lint locally: `pip install --target <dir> flake8 flake8-builtins flake8-comprehensions flake8-docstrings flake8-import-order flake8-quotes`, then `PYTHONPATH=<dir> python3 -m flake8 --config <ament_lint jazzy ament_flake8.ini> templates scripts`.
 - Every new template or reference must be listed in SKILL.md §11 and the README tree, or the skill never reads it.
 - CI (`.github/workflows/check.yml`) runs flake8 + check_templates + launch_test on Humble, Jazzy and Foxy. Foxy is EOL and partial: incompatible templates go in `SKIP` in `scripts/check_templates.py`, each mirrored in `references/foxy.md`, only with a failing CI log behind it.
 - Evals: `evals/evals.json` (task prompts) and `evals/trigger_cases.json`. skill-creator's `run_eval.py` undercounts here because the real skill is installed globally and competes with its temp copy; probe with `claude -p` and record which skill fires instead.

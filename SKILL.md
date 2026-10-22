@@ -20,7 +20,7 @@ allowed-tools:
 Target: **ROS 2 Humble, Python 3.10** (`/opt/ros/humble`). Verify an rclpy API against the installed source before relying on it. On newer distros some things differ: `create_timer(autostart=...)` and `EventsExecutor` do not exist in Humble.
 
 ## 1. Coding Standards
-- PEP 8 with a 99-column limit (what `ament_flake8` enforces). `snake_case` for functions, variables and ROS names, `PascalCase` for classes.
+- PEP 8 with a 99-column limit, **single-quoted strings** and triple-double-quoted docstrings, imports sorted by module name (google style, `import` and `from` mixed). Humble's `ament_flake8` is plain flake8 and accepts anything, but Jazzy and later add `flake8-quotes`, `flake8-import-order`, `flake8-docstrings`: code written in another style passes on Humble and fails `colcon test` on Jazzy. `snake_case` for functions, variables and ROS names, `PascalCase` for classes.
 - English for docstrings, identifiers and log messages.
 - Full type hints on signatures and attributes. Use native generics (`list[str]`, `X | None`), not `typing.List`/`Optional`.
 - Docstrings describe behaviour. Add a comment only for a non-obvious *why* (a driver quirk, a QoS constraint, a ceiling); never to restate the code.
@@ -28,7 +28,7 @@ Target: **ROS 2 Humble, Python 3.10** (`/opt/ros/humble`). Verify an rclpy API a
 ## 2. Node Architecture
 - Always subclass `rclpy.node.Node` (or `rclpy.lifecycle.Node`). No procedural scripts.
 - `__init__` order: parameters, QoS profiles, communication handles and timers last.
-- Declare and read in one line: `self._rate: float = self.declare_parameter("rate_hz", 10.0).value`. Do not redeclare `use_sim_time`; every node already has it.
+- Declare and read in one line: `self._rate: float = self.declare_parameter('rate_hz', 10.0).value`. Do not redeclare `use_sim_time`; every node already has it.
 - Parameter validation: use `ParameterDescriptor(floating_point_range=[FloatingPointRange(from_value=..., to_value=...)])` or `read_only=True` instead of hand-written checks. An `add_on_set_parameters_callback` then only applies the new value.
 - Parameter files: one YAML per package in `config/`, shared values under `/**`, per-node values under the fully qualified name. **The later entry wins, not the more specific one** (verified on Humble), so always put `/**` first:
   ```yaml
@@ -68,7 +68,7 @@ Never trust default QoS without checking. Full matrix and presets: `./references
 - Move heavy compute (inference, point clouds) to a worker thread fed by `queue.Queue(maxsize=1)`.
 - A controller must fail safe: command zero when its input goes stale (see `templates/reference_node.py`) and when it is disabled.
 
-- **Python performance**: never loop over points or pixels in Python. Convert once with `sensor_msgs_py.point_cloud2.read_points_numpy(cloud, field_names=["x", "y", "z"], skip_nans=True)` or `cv_bridge`, then use vectorised numpy. The GIL means a `MultiThreadedExecutor` does not parallelise CPU work: move it to a `concurrent.futures.ProcessPoolExecutor`, or to C++ when it must run at sensor rate.
+- **Python performance**: never loop over points or pixels in Python. Convert once with `sensor_msgs_py.point_cloud2.read_points_numpy(cloud, field_names=['x', 'y', 'z'], skip_nans=True)` or `cv_bridge`, then use vectorised numpy. The GIL means a `MultiThreadedExecutor` does not parallelise CPU work: move it to a `concurrent.futures.ProcessPoolExecutor`, or to C++ when it must run at sensor rate.
 
 ### 5.2 Services
 Short, non-blocking configuration requests only. Anything long is an action.
@@ -87,15 +87,15 @@ Use for hardware drivers, estimators and safety-critical controllers. Template: 
 - `on_deactivate`: stop timers; neutralise commands.
 - `on_cleanup`: destroy everything from `on_configure`. Delegate `on_shutdown` and `on_error` to it so a later `configure` never duplicates resources.
 - Publish only when `pub.is_activated`.
-- A lifecycle node started by a launch file stays UNCONFIGURED until something triggers it; `modular_launch.py` shows the `ChangeState` events. The auto-activate handler needs `start_state="configuring"`: without it, every manual `deactivate` (active → inactive) re-activates the node.
+- A lifecycle node started by a launch file stays UNCONFIGURED until something triggers it; `modular_launch.py` shows the `ChangeState` events. The auto-activate handler needs `start_state='configuring'`: without it, every manual `deactivate` (active → inactive) re-activates the node.
 
 ## 7. Launch
 Template: `./templates/modular_launch.py`.
 
 - Expose environment choices with `DeclareLaunchArgument`, always with a `description` (shown by `ros2 launch --show-args`); build paths with `PathJoinSubstitution` and `FindPackageShare` (resolved at launch time), not `get_package_share_directory` or string concatenation.
-- Group with `GroupAction` + `PushRosNamespace`. **Do not also pass `namespace=` to nodes inside the group** or the namespace doubles (`/robot_0/robot_0/node`). `LifecycleNode` requires the argument, so pass `namespace=""`.
-- Set `use_sim_time` once with `SetParameter(name="use_sim_time", value=...)` inside the group instead of on every node.
-- `output="screen"` and `emulate_tty=True` for readable logs.
+- Group with `GroupAction` + `PushRosNamespace`. **Do not also pass `namespace=` to nodes inside the group** or the namespace doubles (`/robot_0/robot_0/node`). `LifecycleNode` requires the argument, so pass `namespace=''`.
+- Set `use_sim_time` once with `SetParameter(name='use_sim_time', value=...)` inside the group instead of on every node.
+- `output='screen'` and `emulate_tty=True` for readable logs.
 
 ## 8. TF2
 - One `Buffer()` and one `TransformListener(self._tf_buffer, self, spin_thread=False)` per node; rely on the node's executor.
