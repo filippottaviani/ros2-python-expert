@@ -49,6 +49,20 @@
       "prompt": "Crea un pacchetto ROS 2 Python `sync_pair` con un nodo `sync_pair_node` (eseguibile `sync_pair_node`) che sincronizza per timestamp i topic `camera/image` (sensor_msgs/Image) e `lidar/scan` (sensor_msgs/LaserScan), entrambi pubblicati dai sensori con QoS BEST_EFFORT, con tolleranza di 50 ms, e pubblica su `sync_count` (std_msgs/Int32) il numero totale di coppie sincronizzate finora.",
       "expected_output": "message_filters subscribers created with a BEST_EFFORT qos_profile (the default RELIABLE subscriber receives nothing from BEST_EFFORT publishers); sync_count increases while matching-stamp messages arrive.",
       "files": []
+    },
+    {
+      "id": 8,
+      "name": "tf_follower",
+      "prompt": "Crea un pacchetto ROS 2 Python `tf_follower` con un nodo `tf_follower_node` (eseguibile `tf_follower_node`) che a 10 Hz legge la trasformazione dal frame `map` al frame `base_link` e pubblica su `distance` (std_msgs/Float64) la distanza euclidea dell'origine di `base_link` dall'origine di `map`. Il nodo deve partire anche se la trasformazione non esiste ancora, senza bloccarsi e senza crashare, e iniziare a pubblicare appena la trasformazione diventa disponibile.",
+      "expected_output": "Node stays alive with no TF (no messages), then publishes distance == 5.0 once map->base_link (3,4,0) appears; lookup never blocks.",
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "diag_recorder",
+      "prompt": "Crea un pacchetto ROS 2 Python `diag_recorder` con un nodo `diag_recorder_node` (eseguibile `diag_recorder_node`) che registra in un bag rosbag2 (parametro `bag_dir`, directory di output) tutti i messaggi std_msgs/String ricevuti su `chatter`, e pubblica su `/diagnostics` (diagnostic_msgs/DiagnosticArray) a 1 Hz uno stato OK se e' arrivato un messaggio negli ultimi 2 secondi, altrimenti ERROR. Alla chiusura con Ctrl-C il bag deve essere leggibile con `ros2 bag info`.",
+      "expected_output": "/diagnostics level OK while chatter flows and ERROR after it stops; after SIGINT `ros2 bag info` reads the bag with the recorded messages (writer closed cleanly).",
+      "files": []
     }
   ]
 }

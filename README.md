@@ -12,9 +12,10 @@ Agent skill, rulebook and template registry for building production-grade ROS 2 
 
 ```text
 ros2-python-expert/
-├── SKILL.md                       # Rules and the template registry (what the agent reads)
+├── SKILL.md                       # Short gotcha list + template registry (what the agent reads first)
 ├── references/
 │   ├── qos_cheat_sheet.md         # QoS compatibility matrix, presets, debugging
+│   ├── guidelines.md              # Detailed rules: architecture, QoS, concurrency, lifecycle, TF2, anti-patterns
 │   ├── packaging.md               # ament_python files, custom interfaces, build/test
 │   └── foxy.md                    # What breaks on EOL Foxy and the replacements
 ├── templates/
